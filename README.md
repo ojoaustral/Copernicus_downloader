@@ -2,6 +2,8 @@
 
 **Tools for Mass-Downloading Copernicus Time Series Data**  
 
+![unnamed-chunk-11-1](https://github.com/user-attachments/assets/b6601168-9b50-44da-a8ad-b72ea1c7be88)
+
 ## Overview  
 This repository contains tools for efficiently downloading Copernicus marine service data for time-series analysis. The workflow integrates R and Python, allowing users to manage study metadata (sampling sites and dates) and automate data retrieval from Copernicus.
 
@@ -22,3 +24,9 @@ This repository contains tools for efficiently downloading Copernicus marine ser
 
 3. **Traceability**  
    - The **Markdown document serves as a log** of all operations for reproducibility.  
+
+Contributing
+Contributions are welcome! Feel free to open issues or submit pull requests.
+
+Cristian Correa 
+<cristian@newatlantis.io> 
