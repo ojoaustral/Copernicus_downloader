@@ -1,0 +1,348 @@
+---
+title: "Gathering ancillary data of the Monterrey POC"
+author: "Cristian Correa"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+<!-- For more details on using R Markdown see <http://rmarkdown.rstudio.com>. -->
+
+# Libraries
+```{r, message=F}
+rm(list=ls())
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(ncdf4) # for *.nc files
+library(raster)
+library(ggmap)
+library(viridis)
+
+```
+
+In this document and script, various data sources offering worldwide remote-sensing data were queried to retrieve physical and biogeochemical variables with potential predictive power for biodiversity.  
+
+Fisrt, the study area and sample sites from Nowinski *et al.* (2019)^[Nowinski, B., Smith, C.B., Thomas, C.M., Esson, K., Marin, R., Preston, C.M., Birch, J.M., Scholin, C.A., Huntemann, M., Clum, A., Foster, B., Foster, B., Roux, S., Palaniappan, K., Varghese, N., Mukherjee, S., Reddy, T.B.K., Daum, C., Copeland, A., Chen, I.-M.A., Ivanova, N.N., Kyrpides, N.C., Glavina del Rio, T., Whitman, W.B., Kiene, R.P., Eloe-Fadrosh, E.A., and Moran, M.A. 2019. Microbial metagenomes and metatranscriptomes during a coastal phytoplankton bloom. Sci Data 6(1): 129. Nature Publishing Group. doi:10.1038/s41597-019-0132-4.] were imported and then, various data sources and variables were visualized, and extracted for the sampling sites.  
+
+
+The main output is a table of attributes of sapling sites populated with many new variables.   
+
+```{r}
+setwd("/cloud/project/MontereyBay")
+
+```
+
+
+# Import data  
+
+
+## Import sample data (sample_data) 
+
+```{r}
+
+sample_data <- read.delim(file = "Monterey_curated_metadata.tsv")
+
+
+head(sample_data, n=3)
+
+```
+
+## Define map extent (area of interest)
+
+```{r}
+# make_bbox(data = sample_data, lon = lon, lat = lat) 
+# extent <- extent(-92, -89, -1.55, 0.68)
+
+```
+
+
+
+### Sampling dates 
+
+```{r}
+sample_data$SamplingDate <- as.Date(sample_data$Collection_Date)
+
+```
+
+
+Sampling was conducted between the following dates: `r range(sample_data$SamplingDate)`.
+
+```{r, eval =F, include=FALSE}
+range(sample_data$SamplingDate)
+
+```
+
+
+
+# Geographic coordinates
+
+Identify unique sets of coordinates and average by site if necessary
+```{r}
+coords <- sample_data %>% summarise(lat = unique(lat), lon = unique(lon) )
+coords
+```
+This Monterey Bay data set has only one sampling site.
+
+
+Check geographic coordinates and identify potential problems. It may be useful to plot and label the mean site_code of stationary monitoring stations (e.g., temporal sampling in the same bay). In addition, plot the original geographic coordinates, and connect with edges  sites under the same site label (all coordinates under the same site label should be close to each other).
+
+```{r generalmap, cache=T, echo=F, fig.width=8, warning = FALSE, message = FALSE, fig.align = 'center', fig.cap="Distribution of sampling stations along Japan's Chiba peninsula. Average coordinates per site (red) and unique coordinates aqnd conecting vectors by site (color ramp) are shown. Note how at least four coordinates are linked to the wrong site codes."}
+
+library(ggmap)
+
+
+# Average coordinates per site 
+centroids <- sample_data %>% 
+  # group_by(site_code) %>%  
+  summarise(lon = mean(lon), lat=mean(lat))
+
+# Unique coordinated per site
+tmp2 <- sample_data %>% 
+  # group_by(site_code) %>%  
+  distinct(lon, lat)
+
+# Set bounding box 
+# bbox <- make_bbox(centroids$lon, centroids$lat, f = c(0.3,0.3)) # only works with a range of coordinates
+bbox <- make_bbox(centroids$lon + c(-0.2, 0.2), 
+                  centroids$lat + c(-0.2, 0.2))
+
+
+register_stadiamaps(key = "f4aaa648-6137-4e34-a850-46c9821d7a6a")
+
+map <- ggmap(get_stadiamap(bbox = bbox, zoom = 10, maptype = "stamen_terrain_background"))
+ 
+
+# grDevices::png("Map.png", 600, 1200, res = 300)
+  
+
+map + 
+  geom_point(data = centroids, aes(x = lon, y = lat), color = "red", size = 5, alpha=0.2)+
+  # geom_text(data = centroids, aes(x = lon, y = lat, hjust=-0.1))+ #label=site_code, 
+  geom_point(data = tmp2, aes(x = lon, y = lat), size=1, alpha = 1)+ # , color=site_code
+  # create a star-like (ordispider) effect for each group
+  # geom_segment(data = tmp2, aes(x = long_e, y = lat_n, 
+  #                 xend = centroids$lon[match(site_code, centroids$site_code)], 
+  #                 yend = centroids$lat[match(site_code, centroids$site_code)], 
+  #                 color=site_code), size=0.5) + 
+  # annotate("text", x=-Inf, y=c(-37, -45), label=c(expression(text="37"*degree*"S"),expression("45"*degree*"S")), hjust=-0.2,size=3)+
+  # scale_y_continuous(breaks = c(-37,-45), labels = NULL, expand = c(0,0))+
+  # scale_x_continuous(breaks = NULL, labels = NULL, expand = c(0,0))+
+  # scale_color_continuous()+
+  scale_color_brewer(palette = "Spectral")+
+  theme(axis.ticks.length=unit(-1, "mm"), 
+      panel.border = element_rect(colour = "black", size=0.5, fill=NA),
+      axis.title = element_blank())
+
+# dev.off()
+```
+
+
+
+# Copernicus Marine Service
+
+Copernicus Marine presents one of the largest data inventories of high-quality ocean data. The Copernicus Marine Service (or Copernicus Marine Environment Monitoring Service) is the marine component of the Copernicus Programme of the European Union. It provides free, regular and systematic authoritative information on the state of the Blue (physical), White (sea ice) and Green (biogeochemical) ocean,  on a global and regional scale.   It is funded by the European Commission (EC) and implemented by Mercator Ocean International [https://data.marine.copernicus.eu/products](https://data.marine.copernicus.eu/products).
+
+There are a few options to download the data:
+
+1) Downloaded using spatial, temporal, depth, etc., filters directly from the webpage[https://data.marine.copernicus.eu/products](https://data.marine.copernicus.eu/products). Then, the files can be further processed here. 
+
+2) There is a Phython API called `copernicusmarine` that can be used to mass-download data. See `Copernicus_data_download.py` for a script to download time series data in bulk. Once a folder is populated with all the necessary grid frames, continue processing over here. 
+
+
+
+## Net Primary Production  
+
+A time series was downloaded using the `Copernicus_data_download.py` script.
+Begin by examining one frame:
+
+```{r}
+# Set the path for the NetCDF file
+ncfile <- "Monterrey_imagery_NPP/nppv_20161116.nc"
+
+# # Import NetCDF
+ nc <- nc_open(ncfile)
+
+  print(nc)
+```
+
+Import the nc file as a raster
+```{r}
+library(raster)
+
+# import NetCDF with raster
+(npp <- raster("Monterrey_imagery_NPP/nppv_20161116.nc"))
+
+plot(npp)
+
+```
+
+
+Plot one frame along with a reference map and sampling site(s).
+
+```{r}
+library(ggmap)
+library(raster)
+library(ggplot2)
+library(viridis)
+library(dplyr)
+
+# Define the rectangle (bounding box) around the sampling site
+bbox_rect <- data.frame(
+  lon = as.vector(attributes(npp)$extent)[1:2],  # Longitude bounds
+  lat = as.vector(attributes(npp)$extent)[3:4]  # Latitude bounds
+)
+
+# Load the raster file
+npp <- raster("Monterrey_imagery_NPP/nppv_20161116.nc")
+
+# Convert raster to dataframe for ggplot2
+npp_df <- as.data.frame(npp, xy = TRUE, na.rm = TRUE)
+colnames(npp_df) <- c("lon", "lat", "value")
+
+# Define Sampling Site (M0)
+sampling_site <- data.frame(lon = -121.901, lat = 36.835, label = "M0")
+
+# Compute bounding box
+centroids <- sampling_site  # Adjust if you have more sites
+bbox <- make_bbox(centroids$lon + c(-0.5, 0.1), 
+                  centroids$lat + c(-0.5, 0.5))
+
+# Register and fetch the map
+register_stadiamaps(key = "f4aaa648-6137-4e34-a850-46c9821d7a6a")
+map <- ggmap(get_stadiamap(bbox = bbox, zoom = 10, maptype = "stamen_terrain_background"))
+
+# Combine the raster layer, background map, and sampling site
+map <- map +
+  geom_raster(data = npp_df, aes(x = lon, y = lat, fill = value), alpha = 0.5) +  # Semi-transparent raster
+  scale_fill_viridis_c(option = "magma", na.value = "white") +  # Color scale for raster
+  geom_point(data = sampling_site, aes(x = lon, y = lat), color = "red", size = 2) +  # Sampling site
+  geom_polygon(data = bbox_rect, aes(x = lon, y = lat), 
+               fill = NA, color = "blue", size = 1)+  
+  geom_text(data = sampling_site, aes(x = lon, y = lat, label = label), vjust = -1, size = 3, fontface = "bold") +  
+  coord_equal() +
+  theme_minimal() +
+  labs(title = "NPP Raster Overlaid on Reference Map", fill = "NPP Value", x = "Longitude", y = "Latitude")
+
+map
+```
+Examine the possibility to extract grid values from a buffer zone. Define a buffer zone in case you want to use it. 
+
+```{r}
+# Load required packages
+library(ggmap)
+library(ggplot2)
+library(sf)
+
+buffer_meters <- 20000  # Radius in meters for extraction buffer
+
+# Use original coordinates for extraction buffer or a nearby representative place
+# coords2 <- coords
+coords2 <- data.frame(lon = -122, lat = 36.8) 
+
+# Convert the coordinates into an sf point object
+coords_sf <- st_as_sf(coords2, coords = c("lon", "lat"), crs = 4326) 
+# Transform to a projected CRS for proper distance measurement (meters)
+coords_sf <- st_transform(coords_sf, crs = 3857)
+# Create a circular buffer
+buffer <- st_buffer(coords_sf, dist = buffer_meters)
+# Transform back to lat/lon (WGS84) for plotting on ggmap
+buffer <- st_transform(buffer, crs = 4326)
+
+# Get the base map
+map  +
+  geom_sf(data = buffer, inherit.aes = FALSE, fill = "blue", alpha = 0.3, color = "blue")
+
+```
+Based on the buffer zone selected, extract grid values for each time frame.
+Extraction is done through `raster::extract` function. If argument `buffer` is used, all values contained within the buffer are returned, and if `fun` is provided in addition, all cell values are collapsed in one values (e.g., mean).  
+
+```{r}
+output_file <- "cmems_mod_glo_bgc_my_0.083deg-lmtl_PT1D-i__v202411.npp.tsv" 
+
+# Get list of NetCDF files
+files <- list.files(path = "./Monterrey_imagery_NPP/",
+                    pattern = "nppv_.*\\.nc$",  # \ escapes the .
+                    full.names = TRUE)         # Get full paths
+
+# Function to extract the date from filenames
+extract_date_from_filename <- function(filename) {
+  match <- regexpr("nppv_(\\d{8})\\.nc$", basename(filename), perl = TRUE)
+  if (match != -1) {
+    date_str <- sub("nppv_(\\d{8})\\.nc$", "\\1", basename(filename))
+    return(as.Date(date_str, format = "%Y%m%d"))  # Convert to Date format
+  } else {
+    return(NA)  # Return NA if no match is found
+  }
+}
+
+# Initialize output list
+output_list <- list()
+
+# Loop through files
+for (file in files) {
+  date <- extract_date_from_filename(file)
+  npp <- raster(file)  # Load raster
+  value <- raster::extract(x = npp, y = coords2, buffer = buffer_meters, fun = mean, na.rm = T, small = FALSE, df = TRUE, weights = TRUE)[[2]]
+  
+  # Store results in a structured way
+  output_list[[length(output_list) + 1]] <- data.frame(
+    filename = basename(file),
+    date = date,
+    value = value
+  )
+}
+
+# Combine results into a dataframe
+output_df <- do.call(rbind, output_list)
+
+# Save as TSV file
+write.table(output_df, file = output_file, sep = "\t", row.names = FALSE, quote = FALSE)
+
+head(output_df)
+```
+
+```{r}
+output_df %>% ggplot(aes(date, value))+
+  geom_line()
+  
+```
+
+
+
+
+```{r, eval=FALSE, include =FALSE}
+# Extracting values at coordinates from one file, 
+# With no buffer, several NA are produced
+tmp <- raster::extract(x = npp, y=coords, small=T, df=T, weights=T) 
+
+tmp %>% as_tibble() %>% filter(!is.na(Temperature))%>% group_by(ID) %>% tally() %>% 
+  ggplot(aes(ID, n))+
+  geom_col()+
+  # geom_histogram() +
+  labs(title = "Number of observations (raster cells) per sampling site, no buffer used")+
+  theme_bw()
+
+```
+
+
+```{r, eval=FALSE, include =FALSE}
+# with a 10000 m buffer, all sites received at least 1 value
+tmp <- raster::extract(x = npp, y=coords, buffer=10000, fun = mean, small=F, df=T, weights=T) 
+tmp
+
+```
+
+```{r, eval=FALSE, include =FALSE}
+tmp %>% as_tibble() %>% filter(!is.na(Temperature))%>% group_by(ID) %>% tally() %>% 
+  ggplot(aes(ID, n))+
+  geom_col()+
+  # geom_histogram() +
+  labs(title = "Number of observations (raster cells) per sampling site, given the buffer")+
+  theme_bw()
+```
+
