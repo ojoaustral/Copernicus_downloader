@@ -23,7 +23,7 @@ This repository contains tools for efficiently downloading Copernicus marine ser
    - Automate requests and ensure batch processing.  
 
 3. **Traceability**  
-   - The **Markdown document serves as a log** of all operations for reproducibility.  
+   - The **Jupyter notebook** document serves as a log of all operations for reproducibility.  
 
 Contributing
 Contributions are welcome! Feel free to open issues or submit pull requests.
