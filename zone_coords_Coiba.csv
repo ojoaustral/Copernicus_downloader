@@ -1,0 +1,4 @@
+"zone","Latitude","Longitude","zone_selection_plankton","zone_selection_eDNA","zone_selection_eDNA2","zone_selection_sediment","zone_selection_sediment2","Comments"
+"Z1",7.63014,-81.726286,FALSE,TRUE,FALSE,FALSE,TRUE,NA
+"Z2",7.416942,-82.147522,FALSE,TRUE,FALSE,FALSE,TRUE,NA
+"Z3",7.606192,-81.587219,FALSE,TRUE,FALSE,FALSE,TRUE,NA
